@@ -45,15 +45,21 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   connectedCallback () {
-    this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', e => {
+    this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
+  }
+
+  _preStart (event) {
+    console.log(event.target.getAttribute('id'))
+    if (event.target.getAttribute('id') === 'nickInputButton') {
       let nick = this.shadowRoot.querySelector('#nickInput')
       this._nickname = nick.value
       this.shadowRoot.removeChild(this.shadowRoot.querySelector('#nick'))
-      this.shadowRoot.appendChild(htmlStartingGameTemplate.content.cloneNode(true))
-      this.shadowRoot.querySelector('#thanks').textContent += this._nickname
-
-      this.shadowRoot.querySelector('#startButton').addEventListener('click', this._startGame.bind(this))
-    })
+    } else {
+      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
+    }
+    this.shadowRoot.appendChild(htmlStartingGameTemplate.content.cloneNode(true))
+    this.shadowRoot.querySelector('#thanks').textContent += this._nickname
+    this.shadowRoot.querySelector('#startButton').addEventListener('click', this._startGame.bind(this))
   }
 
   _startGame (event) {
@@ -82,6 +88,9 @@ export default class QuizGame extends window.HTMLElement {
     this._intervalID = setInterval(() => {
       text.textContent = `Time left: ${this._countdownTime}`
       this._countdownTime -= 0.1
+      if (this._countdownTime <= 0) {
+        this._lostGame()
+      }
       this._countdownTime = parseFloat(Math.round(this._countdownTime * 100) / 100).toFixed(1)
     }, 100)
   }
@@ -115,6 +124,21 @@ export default class QuizGame extends window.HTMLElement {
       this._fetchQuestion()
     } else {
       console.log(result.message)
+      this._lostGame()
+    }
+  }
+
+  _lostGame () {
+    let btn = this.shadowRoot.querySelector('#answerInputButton')
+    btn.textContent = 'Go back to start'
+    btn.removeEventListener('click', this._sendAnswer.bind(this))
+    btn.addEventListener('click', this._preStart.bind(this))
+    let text = this.shadowRoot.querySelector('#time')
+    clearInterval(this._intervalID)
+    if (this._countdownTime <= 0) {
+      text.textContent = 'Time is up :('
+    } else {
+      text.textContent = 'Incorrect answer :('
     }
   }
 

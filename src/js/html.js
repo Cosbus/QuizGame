@@ -29,7 +29,7 @@ htmlStartingGameTemplate.innerHTML = /* html */ `
 
 const htmlQuizView = document.createElement('template')
 htmlQuizView.innerHTML = /* html */ `
-<div id="quizview">
+<div id="quizView">
   <div class="center">
     <div class="col s12 m6">
       <div class="card blue-grey darken-1">
