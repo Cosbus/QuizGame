@@ -16,6 +16,10 @@ gameTemplate.innerHTML = /* html */ `
 #buttonArea{
 
   }
+
+  .answerButtons{
+    color: red;
+  }
   
   #templateButton {
     padding: 25;

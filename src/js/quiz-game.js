@@ -6,7 +6,8 @@ import {
   htmlQuizView,
   htmlAnswerSpaceText,
   htmlAnswerSpaceButtons,
-  htmlLostGameView } from './html.js'
+  htmlLostGameView,
+  htmlEndGameTemplate } from './html.js'
 
 /**
  * A QuizGame element that handles a quiz game
@@ -53,7 +54,6 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   _preStart (event) {
-    console.log(event.target.getAttribute('id'))
     let nick = this.shadowRoot.querySelector('#nickInput')
     this._nickname = nick.value
     this.shadowRoot.removeChild(this.shadowRoot.querySelector('#nick'))
@@ -91,14 +91,13 @@ export default class QuizGame extends window.HTMLElement {
 
     // find out whether the question offers alternatives and act accordingly
     if (!result.alternatives) {
-      this._setupTextInput(result, qArea)
+      this._setupTextInput(qArea)
     } else {
-      console.log(result.alternatives)
       this._setupAlternatives(result, qArea)
     }
   }
 
-  _setupTextInput (result, qArea) {
+  _setupTextInput (qArea) {
     qArea.appendChild(htmlAnswerSpaceText.content.cloneNode(true))
     this.shadowRoot.querySelector('#answerInputButton').addEventListener('click', e => {
       this._userAnswer = this.shadowRoot.querySelector('#userAnswerInput').value
@@ -135,7 +134,6 @@ export default class QuizGame extends window.HTMLElement {
         if (e.target.getAttribute('id') === button.getAttribute('id')) {
           this._userAnswer = button.getAttribute('id')
           this._sendAnswer()
-          console.log(this._userAnswer)
         }
       }
     })
@@ -156,7 +154,6 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   async _sendAnswer () {
-    console.log(this._userAnswer)
     try {
       let result = await window.fetch(this._answerUrl,
         {
@@ -174,37 +171,31 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   _parseResult (result) {
-    if (result.message === 'Correct answer!') {
+    if (result.nextURL === undefined) {
+      this._gameEnd()
+    } else if (result.message === 'Correct answer!') {
       this._questionUrl = result.nextURL
-      console.log(result.nextURL)
       this._points++
       this._totalTime += (this._timeLimit - this._countdownTime)
-      console.log(this._totalTime)
       this._fetchQuestion()
     } else {
-      console.log(result.message)
       this._lostGame()
     }
   }
 
-  _lostGame () {
-    // Clear space and set up template for further flow
+  _gameEnd () {
     this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
-    this.shadowRoot.appendChild(htmlLostGameView.content.cloneNode(true))
-    this.shadowRoot.querySelector('#restartButton').addEventListener('click', e => {
-      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#lostGameView'))
+    this.shadowRoot.appendChild(htmlEndGameTemplate.content.cloneNode(true))
+    clearInterval(this._intervalID)
+    this.shadowRoot.querySelector('#startOverButton').addEventListener('click', e => {
+      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#endGame'))
       this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
       this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
-      this._preStart.bind(this)
     })
-    let text = this.shadowRoot.querySelector('#lostGameText')
-    clearInterval(this._intervalID)
-    if (this._countdownTime <= 0) {
-      text.textContent = 'Time ran out.'
-    } else {
-      text.textContent = 'Your answer was incorrect.'
-    }
+    this._clearVars()
+  }
 
+  _clearVars () {
     // Clear and zero the different variables
     this._questionUrl = this._startingUrl
     this._answerUrl = ''
@@ -217,26 +208,25 @@ export default class QuizGame extends window.HTMLElement {
     this._intervalID = null
   }
 
-  /* this.shadowRoot.querySelector('#text').addEventListener('click', async e => {
-      console.log('klick!')
+  _lostGame () {
+    // Clear space and set up template for further flow
+    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
+    this.shadowRoot.appendChild(htmlLostGameView.content.cloneNode(true))
+    let timeText = `It took you a total of ${this._totalTime} seconds to answer
+    all ${this._questionNumber} questions!`
+    this.shadowRoot.querySelector('#totalTime').textContent = timeText
+    this.shadowRoot.querySelector('#restartButton').addEventListener('click', e => {
+      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#lostGameView'))
+      this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
+      this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
     })
-
-    this.shadowRoot.querySelector('#text2').addEventListener('click', this._sendPost())
+    let text = this.shadowRoot.querySelector('#lostGameText')
+    clearInterval(this._intervalID)
+    if (this._countdownTime <= 0) {
+      text.textContent = 'Time ran out.'
+    } else {
+      text.textContent = 'Your answer was incorrect.'
+    }
+    this._clearVars()
   }
-
-  async _sendPost () {
-    console.log('klick2!')
-    let result = await window.fetch('http://vhost3.lnu.se:20080/answer/1',
-      {
-        method: 'POST', // or 'PUT'
-        body: JSON.stringify({ 'answer': 2 }), // data can be `string` or {object}!
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-    result = await result.json()
-    console.log(result)
-    console.log('{answer: 2}')
-    console.log(JSON.stringify('{answer: 2}'))
-  } */
 }

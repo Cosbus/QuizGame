@@ -86,6 +86,17 @@ htmlLostGameView.innerHTML = /* html */ `
   </div>
 </div>
 `
+
+const htmlEndGameTemplate = document.createElement('template')
+htmlEndGameTemplate.innerHTML = /* html */ `
+<div id="endGame" class="center">
+  <h1>Well Done!</h1>
+  <div class="input-field col s6" id="infoDiv">
+    <p id="totalTime"></p>
+  </div>
+  <a class="waves-effect waves-light btn" id="startOverButton">Start over</a>
+</div>
+`
 export {
   htmlGameTemplate,
   htmlFirstPageTemplate,
@@ -93,5 +104,6 @@ export {
   htmlQuizView,
   htmlAnswerSpaceText,
   htmlAnswerSpaceButtons,
-  htmlLostGameView
+  htmlLostGameView,
+  htmlEndGameTemplate
 }
