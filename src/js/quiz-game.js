@@ -3,7 +3,10 @@ import {
   htmlGameTemplate,
   htmlFirstPageTemplate,
   htmlStartingGameTemplate,
-  htmlQuizView } from './html.js'
+  htmlQuizView,
+  htmlAnswerSpaceText,
+  htmlAnswerSpaceButtons,
+  htmlLostGameView } from './html.js'
 
 /**
  * A QuizGame element that handles a quiz game
@@ -20,7 +23,8 @@ export default class QuizGame extends window.HTMLElement {
     this.shadowRoot.appendChild(htmlGameTemplate.content.cloneNode(true))
     this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
     // Used to point to the next quiz question, default url is first question
-    this._questionUrl = 'http://vhost3.lnu.se:20080/question/1'
+    this._startingUrl = 'http://vhost3.lnu.se:20080/question/1'
+    this._questionUrl = this._startingUrl
     this._answerUrl = ''
     this._question = ''
     this._nickname = ''
@@ -50,13 +54,9 @@ export default class QuizGame extends window.HTMLElement {
 
   _preStart (event) {
     console.log(event.target.getAttribute('id'))
-    if (event.target.getAttribute('id') === 'nickInputButton') {
-      let nick = this.shadowRoot.querySelector('#nickInput')
-      this._nickname = nick.value
-      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#nick'))
-    } else {
-      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
-    }
+    let nick = this.shadowRoot.querySelector('#nickInput')
+    this._nickname = nick.value
+    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#nick'))
     this.shadowRoot.appendChild(htmlStartingGameTemplate.content.cloneNode(true))
     this.shadowRoot.querySelector('#thanks').textContent += this._nickname
     this.shadowRoot.querySelector('#startButton').addEventListener('click', this._startGame.bind(this))
@@ -73,12 +73,72 @@ export default class QuizGame extends window.HTMLElement {
     result = await result.json()
     this._question = result.question
     this._answerUrl = result.nextURL
+    this._renderQuestion(result)
+  }
+
+  _renderQuestion (result) {
+    // First we clear the question area
+    let qArea = this.shadowRoot.querySelector('#clearableDiv')
+    qArea.innerHTML = ''
+
+    // Then we set up the informational areas
     this.shadowRoot.querySelector('#questionNr').textContent =
      `Question #${this._questionNumber++}`
-    this.shadowRoot.querySelector('#questionText').textContent = this._question
+    let questionTextSpace = this.shadowRoot.querySelector('#questionText')
+    questionTextSpace.textContent = this._question
     this.shadowRoot.querySelector('#player').textContent = `Player: ${this._nickname}`
     this._startTimer()
-    this.shadowRoot.querySelector('#answerInputButton').addEventListener('click', this._sendAnswer.bind(this))
+
+    // find out whether the question offers alternatives and act accordingly
+    if (!result.alternatives) {
+      this._setupTextInput(result, qArea)
+    } else {
+      console.log(result.alternatives)
+      this._setupAlternatives(result, qArea)
+    }
+  }
+
+  _setupTextInput (result, qArea) {
+    qArea.appendChild(htmlAnswerSpaceText.content.cloneNode(true))
+    this.shadowRoot.querySelector('#answerInputButton').addEventListener('click', e => {
+      this._userAnswer = this.shadowRoot.querySelector('#userAnswerInput').value
+      this._sendAnswer()
+    })
+  }
+
+  _setupAlternatives (result, qArea) {
+    qArea.appendChild(htmlAnswerSpaceButtons.content.cloneNode(true))
+    let alternatives = result.alternatives
+    let keys = Object.keys(alternatives)
+    let alts = Object.values(alternatives)
+
+    // get the template for the button
+    let firstBtn = this.shadowRoot.querySelector('.answerButtons')
+    firstBtn.textContent = alts[0]
+    firstBtn.setAttribute('id', keys[0])
+    let btnSpace = this.shadowRoot.querySelector('#buttonArea')
+
+    // set up a button for each alternative
+    for (let i = 1; i < alts.length; i++) {
+      let text = alts[i]
+      let btn = firstBtn.cloneNode(true)
+      btn.setAttribute('id', keys[i])
+      btnSpace.appendChild(btn)
+      btn.textContent = text
+    }
+
+    // Set up a delegating eventListener
+    this.shadowRoot.querySelector('#buttonArea').addEventListener('click', e => {
+      let buttons = this.shadowRoot.querySelectorAll('.answerButtons')
+
+      for (let button of buttons) {
+        if (e.target.getAttribute('id') === button.getAttribute('id')) {
+          this._userAnswer = button.getAttribute('id')
+          this._sendAnswer()
+          console.log(this._userAnswer)
+        }
+      }
+    })
   }
 
   _startTimer () {
@@ -96,7 +156,6 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   async _sendAnswer () {
-    this._userAnswer = this.shadowRoot.querySelector('#userAnswerInput').value
     console.log(this._userAnswer)
     try {
       let result = await window.fetch(this._answerUrl,
@@ -129,17 +188,33 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   _lostGame () {
-    let btn = this.shadowRoot.querySelector('#answerInputButton')
-    btn.textContent = 'Go back to start'
-    btn.removeEventListener('click', this._sendAnswer.bind(this))
-    btn.addEventListener('click', this._preStart.bind(this))
-    let text = this.shadowRoot.querySelector('#time')
+    // Clear space and set up template for further flow
+    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
+    this.shadowRoot.appendChild(htmlLostGameView.content.cloneNode(true))
+    this.shadowRoot.querySelector('#restartButton').addEventListener('click', e => {
+      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#lostGameView'))
+      this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
+      this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
+      this._preStart.bind(this)
+    })
+    let text = this.shadowRoot.querySelector('#lostGameText')
     clearInterval(this._intervalID)
     if (this._countdownTime <= 0) {
-      text.textContent = 'Time is up :('
+      text.textContent = 'Time ran out.'
     } else {
-      text.textContent = 'Incorrect answer :('
+      text.textContent = 'Your answer was incorrect.'
     }
+
+    // Clear and zero the different variables
+    this._questionUrl = this._startingUrl
+    this._answerUrl = ''
+    this._question = ''
+    this._questionNumber = 1
+    this._userAnswer = ''
+    this._points = 0
+    this._totalTime = 0
+    this._countdownTime = this._timeLimit
+    this._intervalID = null
   }
 
   /* this.shadowRoot.querySelector('#text').addEventListener('click', async e => {

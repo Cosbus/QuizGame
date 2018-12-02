@@ -12,6 +12,15 @@ gameTemplate.innerHTML = /* html */ `
   .center {
     text-align:center;
   }
+
+#buttonArea{
+
+  }
+  
+  #templateButton {
+    padding: 25;
+    color: red;
+  }
   
 </style>
 `

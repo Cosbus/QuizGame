@@ -37,13 +37,10 @@ htmlQuizView.innerHTML = /* html */ `
           <span class="card-title" id="questionNr"></span>
           <p id="questionText"></p>
         </div>
-        <div class="card-action">
-          <div class="input-field col s6">
-          <input id="userAnswerInput" type="text" class="center" >
-          <label for="userAnswerInput"></label>
+        <div class="card-action" id="answerSpace">
+          <div id="clearableDiv">
           </div>
           <p id="time"></p><p id="player"></p>
-          <a class="waves-effect waves-light btn" id="answerInputButton">Submit</a>
         </div>
       </div>
     </div>
@@ -51,9 +48,50 @@ htmlQuizView.innerHTML = /* html */ `
 </div>
 `
 
+const htmlAnswerSpaceText = document.createElement('template')
+htmlAnswerSpaceText.innerHTML = /* html */ `
+<div class="input-field col s6">
+  <input id="userAnswerInput" type="text" class="center" >
+  <label for="userAnswerInput"></label>
+</div>
+
+<a class="waves-effect waves-light btn" id="answerInputButton">Submit</a>
+`
+
+const htmlAnswerSpaceButtons = document.createElement('template')
+htmlAnswerSpaceButtons.innerHTML = /* html */ `
+<div class="input-field col s6" id="buttonArea">
+  <a class="waves-effect waves-light btn answerButtons"></a>
+</div>
+`
+
+const htmlLostGameView = document.createElement('template')
+htmlLostGameView.innerHTML = /* html */ `
+<div id="lostGameView">
+  <div class="center">
+    <div class="col s12 m6">
+      <div class="card blue-grey darken-1">
+        <div class="card-content white-text">
+          <span class="card-title" id="lost">You lost.</span>
+          <p id="lostGameText"></p>
+        </div>
+        <div class="card-action" id="infoSpace">
+          <div class="input-field col s6" id="buttonArea">
+            <a class="waves-effect waves-light btn answerButtons" id="restartButton">Restart</a>
+          </div>
+          <p id="time"></p><p id="player"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`
 export {
   htmlGameTemplate,
   htmlFirstPageTemplate,
   htmlStartingGameTemplate,
-  htmlQuizView
+  htmlQuizView,
+  htmlAnswerSpaceText,
+  htmlAnswerSpaceButtons,
+  htmlLostGameView
 }
