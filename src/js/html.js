@@ -1,7 +1,10 @@
 const htmlGameTemplate = document.createElement('template')
 htmlGameTemplate.innerHTML = /* html */ `
 <head>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+ <!--Import materialize.css-->
+ <link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>
+ <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+        rel="stylesheet">
 </head>
 `
 
@@ -11,10 +14,12 @@ htmlFirstPageTemplate.innerHTML = /* html */ `
   <h1>Welcome to the quiz!</h1>
   <p>Please input your nickname below then press "submit"</p>
   <div class="input-field col s6">
-    <input id="nickInput" type="text" class="center" >
-    <label for="last_name"></label>
+  <i class="material-icons prefix">account_circle</i>
+    <input id="nickInput" type="text" class="center validate">
+    <label for="nickInput">Nickname</label>
   </div>
-  <a class="waves-effect waves-light btn" id="nickInputButton">Submit</a>
+  <button class="waves-effect waves-light btn"  type="submit" name="action" id="nickInputButton">Submit
+  <i class="material-icons right">send</i></button>
 </div>
 `
 
@@ -61,7 +66,7 @@ htmlAnswerSpaceText.innerHTML = /* html */ `
 const htmlAnswerSpaceButtons = document.createElement('template')
 htmlAnswerSpaceButtons.innerHTML = /* html */ `
 <div class="input-field col s6" id="buttonArea">
-  <a class="waves-effect waves-light btn answerButtons"></a>
+  <a class="waves-effect waves-light btn answerButtons" id="answerButtons"></a>
 </div>
 `
 
@@ -90,12 +95,28 @@ htmlLostGameView.innerHTML = /* html */ `
 const htmlEndGameTemplate = document.createElement('template')
 htmlEndGameTemplate.innerHTML = /* html */ `
 <div id="endGame" class="center">
-  <h1>Well Done!</h1>
+  <h1 id="endTitle"></h1>
   <div class="input-field col s6" id="infoDiv">
     <p id="totalTime"></p>
   </div>
   <a class="waves-effect waves-light btn" id="startOverButton">Start over</a>
-</div>
+  <div class="input-field col s6" id="highScore">
+    <ul class="collection with-header" id="collection">
+        <li class="collection-header"><h4>High Scores</h4></li>
+        <li class="collection-item" id="item1">
+        <div class="li-container" id="first-li-box">
+          <div class="first-li-item" id="firstItem">
+          Name
+          </div>
+          <div class="second-li-item" id="secondItem">
+          Time
+          </div>
+          <div class="clear">
+          </div>
+        </div>
+        </li>
+      </ul>
+  </div>
 `
 export {
   htmlGameTemplate,

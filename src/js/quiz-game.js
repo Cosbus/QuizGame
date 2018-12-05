@@ -36,6 +36,13 @@ export default class QuizGame extends window.HTMLElement {
     this._timeLimit = 20
     this._countdownTime = this._timeLimit
     this._intervalID = null
+    this._timeDecimalNr = 2
+    this._timerRefreshRate = 10
+    this._timerDecrement = this._timerRefreshRate / 1000
+
+    this._storageName = 'quizHighScores'
+    this._highScores = {}
+    this._currentObj = {}
   }
 
   /**
@@ -145,12 +152,16 @@ export default class QuizGame extends window.HTMLElement {
     let text = this.shadowRoot.querySelector('#time')
     this._intervalID = setInterval(() => {
       text.textContent = `Time left: ${this._countdownTime}`
-      this._countdownTime -= 0.1
+      this._countdownTime -= this._timerDecrement
       if (this._countdownTime <= 0) {
         this._lostGame()
       }
-      this._countdownTime = parseFloat(Math.round(this._countdownTime * 100) / 100).toFixed(1)
-    }, 100)
+      this._countdownTime = this._cropTime(this._countdownTime, this._timeDecimalNr)
+    }, this._timerRefreshRate)
+  }
+
+  _cropTime (time, decimals) {
+    return parseFloat(Math.round(time * 10000) / 10000).toFixed(decimals)
   }
 
   async _sendAnswer () {
@@ -171,22 +182,52 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   _parseResult (result) {
-    if (result.nextURL === undefined) {
-      this._gameEnd()
-    } else if (result.message === 'Correct answer!') {
-      this._questionUrl = result.nextURL
-      this._points++
-      this._totalTime += (this._timeLimit - this._countdownTime)
-      this._fetchQuestion()
-    } else {
+    if (result.message === 'Wrong answer! :(') {
       this._lostGame()
+    } else if (result.message === 'Correct answer!') {
+      if (result.nextURL === undefined) {
+        this._gameEnd()
+      } else {
+        this._questionUrl = result.nextURL
+        this._points++
+        this._totalTime += (this._timeLimit - this._countdownTime)
+        this._fetchQuestion()
+      }
     }
   }
 
   _gameEnd () {
     this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
     this.shadowRoot.appendChild(htmlEndGameTemplate.content.cloneNode(true))
-    clearInterval(this._intervalID)
+
+    // Set time information in view
+    let titleText = `Well Done ${this._nickname}!`
+    let timeText = `It took you a total of ${this._cropTime(this._totalTime, this._timeDecimalNr)} seconds to answer
+    all ${this._questionNumber} questions!`
+    this.shadowRoot.querySelector('#totalTime').textContent = timeText
+    this.shadowRoot.querySelector('#endTitle').textContent = titleText
+
+    // Set up the high scores
+    this._setHighScores()
+
+    // First get the template for the list-item and clone it
+    let firstItem = this.shadowRoot.querySelector('#item1')
+    let collection = this.shadowRoot.querySelector('#collection')
+
+    // Then loop through the objects
+    let objKeys = Object.keys(this._highScores)
+    let objValues = Object.values(this._highScores)
+
+    for (let i = 0; i < objKeys.length; i++) {
+      let item = firstItem.cloneNode(true)
+      item.querySelector('#firstItem').innerHTML = objValues[i].name
+      item.querySelector('#secondItem').innerHTML = this._cropTime(objValues[i].time, 2)
+      collection.appendChild(item)
+    }
+
+    // Save the high-score list
+    this._saveHighScores()
+
     this.shadowRoot.querySelector('#startOverButton').addEventListener('click', e => {
       this.shadowRoot.removeChild(this.shadowRoot.querySelector('#endGame'))
       this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
@@ -195,8 +236,63 @@ export default class QuizGame extends window.HTMLElement {
     this._clearVars()
   }
 
+  _setHighScores () {
+    // construct the current object
+    this._currentObj = { name: this._nickname, time: this._totalTime }
+
+    // load the current high scores saved in browser
+    this._loadHighScores()
+
+    // Add the current game object to the high scores
+    // Using "totalTime" as key for the current object
+    let key = this._totalTime
+    this._highScores[key] = this._currentObj
+
+    // Retrieve the keys from the high scores
+    let hsObjKeys = Object.keys(this._highScores)
+
+    // Only keep five high scores, use iteration to avoid infinite loop
+    let iteration = 0
+    while (hsObjKeys.length > 5 && iteration < 10) {
+      // Find the maximum time and remove that high score
+      let maxKey = Math.max(...hsObjKeys)
+      delete this._highScores[maxKey]
+
+      // Update the variables
+      iteration++
+      hsObjKeys = Object.keys(this._highScores)
+    }
+
+    // Order the high scores from fastest to slowest
+    // keep a temporary placeholder for scores
+    let tempHS = {}
+    while (hsObjKeys.length > 0) {
+      // Find the minimum value, place in placeholder and remove from highscores
+      let minKey = Math.min(...hsObjKeys)
+      tempHS[minKey] = this._highScores[minKey]
+
+      // Delete and update values
+      delete this._highScores[minKey]
+      hsObjKeys = Object.keys(this._highScores)
+    }
+
+    this._highScores = tempHS
+  }
+
+  _saveHighScores () {
+    window.localStorage.setItem(this._storageName, JSON.stringify(this._highScores))
+  }
+
+  _loadHighScores () {
+    if (window.localStorage.getItem(this._storageName)) {
+      let result = window.localStorage.getItem(this._storageName)
+      result = JSON.parse(result)
+      this._highScores = result
+    }
+  }
+
   _clearVars () {
-    // Clear and zero the different variables
+    clearInterval(this._intervalID)
     this._questionUrl = this._startingUrl
     this._answerUrl = ''
     this._question = ''
@@ -206,15 +302,14 @@ export default class QuizGame extends window.HTMLElement {
     this._totalTime = 0
     this._countdownTime = this._timeLimit
     this._intervalID = null
+    this._highScores = {}
   }
 
   _lostGame () {
     // Clear space and set up template for further flow
     this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
     this.shadowRoot.appendChild(htmlLostGameView.content.cloneNode(true))
-    let timeText = `It took you a total of ${this._totalTime} seconds to answer
-    all ${this._questionNumber} questions!`
-    this.shadowRoot.querySelector('#totalTime').textContent = timeText
+
     this.shadowRoot.querySelector('#restartButton').addEventListener('click', e => {
       this.shadowRoot.removeChild(this.shadowRoot.querySelector('#lostGameView'))
       this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
