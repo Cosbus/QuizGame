@@ -20,9 +20,12 @@ export default class QuizGame extends window.HTMLElement {
     super()
 
     this.attachShadow({ mode: 'open' })
-    this.shadowRoot.appendChild(cssTemplate.content.cloneNode(true))
+
     this.shadowRoot.appendChild(htmlGameTemplate.content.cloneNode(true))
-    this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
+    this.shadowRoot.appendChild(cssTemplate.content.cloneNode(true))
+
+    this._gameBody = this.shadowRoot.querySelector('#gameBody')
+    this._gameBody.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
     // Used to point to the next quiz question, default url is first question
     this._startingUrl = 'http://vhost3.lnu.se:20080/question/1'
     this._questionUrl = this._startingUrl
@@ -33,7 +36,7 @@ export default class QuizGame extends window.HTMLElement {
     this._userAnswer = ''
     this._points = 0
     this._totalTime = 0
-    this._timeLimit = 20
+    this._timeLimit = 2000
     this._countdownTime = this._timeLimit
     this._intervalID = null
     this._timeDecimalNr = 2
@@ -57,21 +60,21 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   connectedCallback () {
-    this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
+    this._gameBody.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
   }
 
   _preStart (event) {
-    let nick = this.shadowRoot.querySelector('#nickInput')
+    let nick = this._gameBody.querySelector('#nickInput')
     this._nickname = nick.value
-    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#nick'))
-    this.shadowRoot.appendChild(htmlStartingGameTemplate.content.cloneNode(true))
-    this.shadowRoot.querySelector('#thanks').textContent += this._nickname
-    this.shadowRoot.querySelector('#startButton').addEventListener('click', this._startGame.bind(this))
+    this._gameBody.removeChild(this._gameBody.querySelector('#nick'))
+    this._gameBody.appendChild(htmlStartingGameTemplate.content.cloneNode(true))
+    this._gameBody.querySelector('#thanks').textContent += this._nickname
+    this._gameBody.querySelector('#startButton').addEventListener('click', this._startGame.bind(this))
   }
 
   _startGame (event) {
-    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#start'))
-    this.shadowRoot.appendChild(htmlQuizView.content.cloneNode(true))
+    this._gameBody.removeChild(this.shadowRoot.querySelector('#start'))
+    this._gameBody.appendChild(htmlQuizView.content.cloneNode(true))
     this._fetchQuestion()
   }
 
@@ -85,15 +88,15 @@ export default class QuizGame extends window.HTMLElement {
 
   _renderQuestion (result) {
     // First we clear the question area
-    let qArea = this.shadowRoot.querySelector('#clearableDiv')
+    let qArea = this._gameBody.querySelector('#clearableDiv')
     qArea.innerHTML = ''
 
     // Then we set up the informational areas
-    this.shadowRoot.querySelector('#questionNr').textContent =
+    this._gameBody.querySelector('#questionNr').textContent =
      `Question #${this._questionNumber++}`
-    let questionTextSpace = this.shadowRoot.querySelector('#questionText')
+    let questionTextSpace = this._gameBody.querySelector('#questionText')
     questionTextSpace.textContent = this._question
-    this.shadowRoot.querySelector('#player').textContent = `Player: ${this._nickname}`
+    this._gameBody.querySelector('#player').textContent = this._nickname
     this._startTimer()
 
     // find out whether the question offers alternatives and act accordingly
@@ -106,8 +109,8 @@ export default class QuizGame extends window.HTMLElement {
 
   _setupTextInput (qArea) {
     qArea.appendChild(htmlAnswerSpaceText.content.cloneNode(true))
-    this.shadowRoot.querySelector('#answerInputButton').addEventListener('click', e => {
-      this._userAnswer = this.shadowRoot.querySelector('#userAnswerInput').value
+    this._gameBody.querySelector('#answerInputButton').addEventListener('click', e => {
+      this._userAnswer = this._gameBody.querySelector('#userAnswerInput').value
       this._sendAnswer()
     })
   }
@@ -119,26 +122,25 @@ export default class QuizGame extends window.HTMLElement {
     let alts = Object.values(alternatives)
 
     // get the template for the button
-    let firstBtn = this.shadowRoot.querySelector('.answerButtons')
-    firstBtn.textContent = alts[0]
+    let firstBtn = this._gameBody.querySelector('.radioButtons')
     firstBtn.setAttribute('id', keys[0])
-    let btnSpace = this.shadowRoot.querySelector('#buttonArea')
+    firstBtn.querySelector('#radioText').textContent = alts[0]
+
+    let btnSpace = this._gameBody.querySelector('#buttonArea')
 
     // set up a button for each alternative
     for (let i = 1; i < alts.length; i++) {
-      let text = alts[i]
       let btn = firstBtn.cloneNode(true)
-      btn.setAttribute('id', keys[i])
       btnSpace.appendChild(btn)
-      btn.textContent = text
+      btn.setAttribute('id', keys[i])
+      btn.querySelector('#radioText').textContent = alts[i]
     }
 
-    // Set up a delegating eventListener
-    this.shadowRoot.querySelector('#buttonArea').addEventListener('click', e => {
-      let buttons = this.shadowRoot.querySelectorAll('.answerButtons')
-
-      for (let button of buttons) {
-        if (e.target.getAttribute('id') === button.getAttribute('id')) {
+    // Set up an eventListener
+    this._gameBody.querySelector('#answerRadioButton').addEventListener('click', e => {
+      let radioButtons = this._gameBody.querySelectorAll('.radioButtons')
+      for (let button of radioButtons) {
+        if (button.querySelector('#radioButton').checked) {
           this._userAnswer = button.getAttribute('id')
           this._sendAnswer()
         }
@@ -151,7 +153,7 @@ export default class QuizGame extends window.HTMLElement {
     this._countdownTime = this._timeLimit
     let text = this.shadowRoot.querySelector('#time')
     this._intervalID = setInterval(() => {
-      text.textContent = `Time left: ${this._countdownTime}`
+      text.textContent = this._countdownTime
       this._countdownTime -= this._timerDecrement
       if (this._countdownTime <= 0) {
         this._lostGame()
@@ -197,22 +199,22 @@ export default class QuizGame extends window.HTMLElement {
   }
 
   _gameEnd () {
-    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
-    this.shadowRoot.appendChild(htmlEndGameTemplate.content.cloneNode(true))
+    this._gameBody.removeChild(this._gameBody.querySelector('#quizView'))
+    this._gameBody.appendChild(htmlEndGameTemplate.content.cloneNode(true))
 
     // Set time information in view
-    let titleText = `Well Done ${this._nickname}!`
+    let titleText = `Well done ${this._nickname}!`
     let timeText = `It took you a total of ${this._cropTime(this._totalTime, this._timeDecimalNr)} seconds to answer
-    all ${this._questionNumber} questions!`
-    this.shadowRoot.querySelector('#totalTime').textContent = timeText
-    this.shadowRoot.querySelector('#endTitle').textContent = titleText
+    all ${--this._questionNumber} questions!`
+    this._gameBody.querySelector('#totalTime').textContent = timeText
+    this._gameBody.querySelector('#endTitle').textContent = titleText
 
     // Set up the high scores
     this._setHighScores()
 
     // First get the template for the list-item and clone it
-    let firstItem = this.shadowRoot.querySelector('#item1')
-    let collection = this.shadowRoot.querySelector('#collection')
+    let firstItem = this._gameBody.querySelector('#item1')
+    let collection = this._gameBody.querySelector('#collection')
 
     // Then loop through the objects
     let objKeys = Object.keys(this._highScores)
@@ -228,10 +230,10 @@ export default class QuizGame extends window.HTMLElement {
     // Save the high-score list
     this._saveHighScores()
 
-    this.shadowRoot.querySelector('#startOverButton').addEventListener('click', e => {
-      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#endGame'))
-      this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
-      this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
+    this._gameBody.querySelector('#startOverButton').addEventListener('click', e => {
+      this._gameBody.removeChild(this._gameBody.querySelector('#endGame'))
+      this._gameBody.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
+      this._gameBody.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
     })
     this._clearVars()
   }
@@ -307,15 +309,15 @@ export default class QuizGame extends window.HTMLElement {
 
   _lostGame () {
     // Clear space and set up template for further flow
-    this.shadowRoot.removeChild(this.shadowRoot.querySelector('#quizView'))
-    this.shadowRoot.appendChild(htmlLostGameView.content.cloneNode(true))
+    this._gameBody.removeChild(this.shadowRoot.querySelector('#quizView'))
+    this._gameBody.appendChild(htmlLostGameView.content.cloneNode(true))
 
-    this.shadowRoot.querySelector('#restartButton').addEventListener('click', e => {
-      this.shadowRoot.removeChild(this.shadowRoot.querySelector('#lostGameView'))
-      this.shadowRoot.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
-      this.shadowRoot.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
+    this._gameBody.querySelector('#restartButton').addEventListener('click', e => {
+      this._gameBody.removeChild(this.shadowRoot.querySelector('#lostGameView'))
+      this._gameBody.appendChild(htmlFirstPageTemplate.content.cloneNode(true))
+      this._gameBody.querySelector('#nickInputButton').addEventListener('click', this._preStart.bind(this))
     })
-    let text = this.shadowRoot.querySelector('#lostGameText')
+    let text = this._gameBody.querySelector('#lostGameText')
     clearInterval(this._intervalID)
     if (this._countdownTime <= 0) {
       text.textContent = 'Time ran out.'

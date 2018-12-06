@@ -37,8 +37,22 @@ gameTemplate.innerHTML = /* html */ `
     /* Support for IE. */
     font-feature-settings: 'liga';
   }
+  i.icon-white {
+    color: white;
+  }
+
+  
+  span.radio-color {
+    color: white;
+  }
+
   p {
+    font-size: 22px;
+  }
+
+  h1 {
     
+    font-size: 30px;
   }
 
   .center {
