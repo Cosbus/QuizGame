@@ -6,7 +6,7 @@ htmlGameTemplate.innerHTML = /* html */ `
  <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
         rel="stylesheet">
 </head>
-  <body>
+<body>
   <div class="container" id="gameBody">
   </div>
 </body>
